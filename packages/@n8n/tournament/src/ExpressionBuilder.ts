@@ -140,6 +140,19 @@ const fixStringNewLines = (node: types.namedTypes.File): types.namedTypes.File =
 	visit(node, {
 		visitTemplateElement(path) {
 			this.traverse(path);
+			const { raw, cooked } = path.node.value;
+			if (!raw.includes('\n') && !(cooked ?? '').includes('\n')) return;
+
+			// Force recast to print the whole template literal generically instead of
+			// patching the changed element into the original source. Patching inserts
+			// a space between the element and an adjoining `${` when the element ends
+			// with an identifier character (e.g. `chk_${x}` would become `chk_ ${x}`),
+			// which changes the resulting string.
+			const templateLiteral = path.parent?.node as { original?: unknown } | undefined;
+			if (templateLiteral) {
+				templateLiteral.original = null;
+			}
+
 			const el = b.templateElement(
 				{
 					cooked: path.node.value.cooked === null ? null : replace(path.node.value.cooked),
